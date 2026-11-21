@@ -1,0 +1,37 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Мир Слоновых</title><style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Arial,sans-serif;color:white;background:radial-gradient(ellipse at top,#345da0,#10182f 75%);min-height:100vh}
+header{padding:28px 5vw;display:flex;gap:20px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+h1{font-size:clamp(28px,5vw,48px);margin:0}.sub{color:#bcd2f7;margin:7px 0}
+input{font-size:18px;border:0;border-radius:15px;padding:15px;width:min(100%,360px)}
+main{padding:0 5vw 50px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:18px}
+.tile{border:1px solid #ffffff40;border-radius:20px;background:#254677;color:white;text-align:left;overflow:hidden;cursor:pointer;padding:0}
+.tile:hover,.tile:focus-visible{outline:3px solid #ffce58}.poster{height:130px;display:grid;place-items:center;font-size:62px;background:linear-gradient(130deg,#447ccf,#9465c5)}
+.info{padding:15px}.name{font-size:18px;font-weight:750;overflow-wrap:anywhere}.cat{font-size:13px;color:#d1dffc;margin-top:7px}
+dialog{width:min(96vw,1000px);max-height:96vh;border:0;border-radius:18px;background:#141b2b;color:white;padding:15px}
+dialog::backdrop{background:#000c}video{width:100%;max-height:73vh;background:black}
+.controls{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+button.action{padding:11px 14px;background:#ffd15b;color:#17213b;border:0;border-radius:12px;font-size:16px;font-weight:bold;cursor:pointer}
+#empty{font-size:18px;color:#dbe6ff}
+</style></head><body>
+<header><div><h1>🐘 Мир Слоновых</h1><p class="sub">Домашний кинотеатр для всей семьи ✨</p></div><input id="search" placeholder="🔎 Найти мультфильм" aria-label="Поиск"></header>
+<main><h2>🍿 Что будем смотреть?</h2><p id="empty">Загружаем библиотеку…</p><div id="grid" class="grid"></div></main>
+<dialog id="player"><div class="controls"><strong id="now"></strong><div><button class="action" id="next">Следующий ⏭</button> <button class="action" id="close">Закрыть ✕</button></div></div><video id="video" controls playsinline></video><p class="sub">Для лучшей совместимости используйте MP4 (H.264/AAC).</p></dialog>
+<script>
+const grid=document.querySelector('#grid'),empty=document.querySelector('#empty'),dialog=document.querySelector('#player'),video=document.querySelector('#video');
+let items=[],visible=[],current=-1;
+const url=id=>'/video/'+id.split('/').map(encodeURIComponent).join('/');
+function render(){const q=document.querySelector('#search').value.toLocaleLowerCase('ru').trim();
+visible=items.filter(x=>(x.title+' '+x.category).toLocaleLowerCase('ru').includes(q));grid.replaceChildren();
+empty.textContent=visible.length?'':(items.length?'Ничего не найдено 🔎':'Мультфильмов пока нет. Проверь папку в config.json.');
+visible.forEach((x,i)=>{const b=document.createElement('button');b.className='tile';const p=document.createElement('div');p.className='poster';p.textContent=['🐱','🐘','🦊','🐻','🌈','🚀'][i%6];
+const d=document.createElement('div');d.className='info';const n=document.createElement('div');n.className='name';n.textContent=x.title;const c=document.createElement('div');c.className='cat';c.textContent=x.category;d.append(n,c);b.append(p,d);b.onclick=()=>play(i);grid.append(b);});}
+function play(i){if(i<0||i>=visible.length){if(video.ended)dialog.close();return;}current=i;const x=visible[i];document.querySelector('#now').textContent=x.title;video.src=url(x.id);
+if(!dialog.open)dialog.showModal();video.onloadedmetadata=()=>{try{const t=Number(localStorage.getItem('resume:'+x.id)||0);if(t>0&&t<video.duration-10)video.currentTime=t}catch(e){}};video.play().catch(()=>{});}
+video.addEventListener('timeupdate',()=>{if(current>=0){try{localStorage.setItem('resume:'+visible[current].id,String(video.currentTime))}catch(e){}}});
+video.addEventListener('ended',()=>{if(current>=0){try{localStorage.removeItem('resume:'+visible[current].id)}catch(e){}}play(current+1)});
+document.querySelector('#next').onclick=()=>play(current+1);document.querySelector('#close').onclick=()=>dialog.close();
+dialog.addEventListener('close',()=>{video.pause();video.removeAttribute('src');video.load();});
+document.querySelector('#search').addEventListener('input',render);
+fetch('/api/library').then(r=>r.json()).then(d=>{items=d.items;render();if(!d.configured)empty.textContent='Укажи папку с мультфильмами в config.json.'}).catch(()=>empty.textContent='Ошибка загрузки библиотеки.');
+</script></body></html>
