@@ -1,0 +1,5 @@
+config.json
+media/
+data/
+__pycache__/
+*.pyc
